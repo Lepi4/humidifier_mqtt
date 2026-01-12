@@ -1,0 +1,48 @@
+name: Release (PlatformIO)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install platformio
+
+      - name: Build firmware (esp32dev)
+        run: pio run -e esp32dev
+
+      - name: Build firmware (esp32ota)
+        run: pio run -e esp32ota
+
+      - name: Prepare artifacts
+        run: |
+          mkdir -p dist
+          cp .pio/build/esp32dev/firmware.bin dist/firmware_esp32dev.bin
+          cp .pio/build/esp32ota/firmware.bin dist/firmware_esp32ota.bin
+          sha256sum dist/* > dist/SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/firmware_esp32dev.bin
+            dist/firmware_esp32ota.bin
+            dist/SHA256SUMS.txt
+          generate_release_notes: true
